@@ -29,7 +29,7 @@
 		address: '1213 Newell Rd, Palo Alto, CA 94303',
 	};
 	let location: google.maps.LatLng | undefined;
-	const zoom = 29;
+	const zoom = 19;
 
 	// Initialize app.
 	let mapElement: HTMLElement;
