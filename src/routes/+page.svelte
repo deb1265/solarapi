@@ -2,8 +2,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { Loader } from '@googlemaps/js-api-loader';
-    import SearchBar from './components/SearchBar.svelte';
-    import Sections from './sections/Sections.svelte';
 
     const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
     const defaultPlace = {
@@ -14,26 +12,16 @@
     const zoom = 19;
     let mapElement: HTMLElement;
     let map: google.maps.Map;
-    let geometryLibrary: google.maps.GeometryLibrary;
-    let mapsLibrary: google.maps.MapsLibrary;
-    let placesLibrary: google.maps.PlacesLibrary;
 
     onMount(async () => {
         const loader = new Loader({ apiKey: googleMapsApiKey });
-        const libraries = {
-            geometry: loader.importLibrary('geometry'),
-            maps: loader.importLibrary('maps'),
-            places: loader.importLibrary('places'),
-        };
-        geometryLibrary = await libraries.geometry;
-        mapsLibrary = await libraries.maps;
-        placesLibrary = await libraries.places;
+        await loader.load();
 
         const geocoder = new google.maps.Geocoder();
         const geocoderResponse = await geocoder.geocode({ address: defaultPlace.address });
         const geocoderResult = geocoderResponse.results[0];
         location = geocoderResult.geometry.location;
-        map = new mapsLibrary.Map(mapElement, {
+        map = new google.maps.Map(mapElement, {
             center: location,
             zoom: zoom,
             tilt: 0,
@@ -44,6 +32,14 @@
             streetViewControl: false,
             zoomControl: false,
         });
+    });
+</script>
+
+<!-- HTML structure -->
+<div class="map-container">
+    <div bind:this={mapElement} class="w-full h-screen" />
+</div>
+
 
         // Load HD image
         await loadHDImageOfAddress(defaultPlace.address);
