@@ -24,10 +24,10 @@
             tilt: 0,
             mapTypeId: 'satellite',
             mapTypeControl: false,
-            fullscreenControl: true,
+            fullscreenControl: false,
             rotateControl: false,
             streetViewControl: false,
-            zoomControl: true,
+            zoomControl: false,
             styles: [{
                 featureType: "poi",
                 elementType: "labels",
