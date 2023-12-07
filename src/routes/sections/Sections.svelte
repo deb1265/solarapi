@@ -36,8 +36,8 @@
 
 	// User settings
 	let monthlyAverageEnergyBill = 300;
-	let panelCapacityWatts = 250;
-	let energyCostPerKwh = 0.31;
+	let panelCapacityWatts = 365;
+	let energyCostPerKwh = 0.28;
 	let dcToAcDerate = 0.85;
 
 	// Find the config that covers the yearly energy consumption.
