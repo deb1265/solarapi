@@ -45,7 +45,7 @@
 	export let map: google.maps.Map;
 
 	const icon = 'layers';
-	const title = 'Data Layers endpoint';
+	const title = 'Shading analysis';
 
 	const dataLayerOptions: Record<LayerId | 'none', string> = {
 		none: 'No layer',
