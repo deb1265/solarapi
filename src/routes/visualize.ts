@@ -19,10 +19,10 @@ import type { GeoTiff } from './solar';
 export function renderRGB(rgb: GeoTiff, mask?: GeoTiff) {
 	// https://www.w3schools.com/tags/canvas_createimagedata.asp
 	const canvas = document.createElement('canvas');
-	//canvas.width = mask ? mask.width : rgb.width;
-	//canvas.height = mask ? mask.height : rgb.height;
-	canvas.width = rgb.width;
-	canvas.height = rgb.height;
+	canvas.width = mask ? mask.width : rgb.width;
+	canvas.height = mask ? mask.height : rgb.height;
+	//canvas.width = rgb.width;
+	//canvas.height = rgb.height;
 	const dw = rgb.width / canvas.width;
 	const dh = rgb.height / canvas.height;
 
