@@ -2,40 +2,25 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { Loader } from '@googlemaps/js-api-loader';
-    import SearchBar from './components/SearchBar.svelte';
-    import Sections from './sections/Sections.svelte';
 
     const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
     const defaultPlace = {
-        name: 'Rinconada Library',
         address: '1213 Newell Rd, Palo Alto, CA 94303',
     };
-    let location: google.maps.LatLng | undefined;
-    const zoom = 19;
     let mapElement: HTMLElement;
-    let map: google.maps.Map;
-    let geometryLibrary: google.maps.GeometryLibrary;
-    let mapsLibrary: google.maps.MapsLibrary;
-    let placesLibrary: google.maps.PlacesLibrary;
 
     onMount(async () => {
         const loader = new Loader({ apiKey: googleMapsApiKey });
-        const libraries = {
-            geometry: loader.importLibrary('geometry'),
-            maps: loader.importLibrary('maps'),
-            places: loader.importLibrary('places'),
-        };
-        geometryLibrary = await libraries.geometry;
-        mapsLibrary = await libraries.maps;
-        placesLibrary = await libraries.places;
+        await loader.load();
 
         const geocoder = new google.maps.Geocoder();
         const geocoderResponse = await geocoder.geocode({ address: defaultPlace.address });
         const geocoderResult = geocoderResponse.results[0];
-        location = geocoderResult.geometry.location;
-        map = new mapsLibrary.Map(mapElement, {
+        const location = geocoderResult.geometry.location;
+
+        const map = new google.maps.Map(mapElement, {
             center: location,
-            zoom: zoom,
+            zoom: 19, // You can adjust the zoom level here
             tilt: 0,
             mapTypeId: 'satellite',
             mapTypeControl: false,
@@ -43,8 +28,19 @@
             rotateControl: false,
             streetViewControl: false,
             zoomControl: false,
+            styles: [{
+                featureType: "poi",
+                elementType: "labels",
+                stylers: [{ visibility: "off" }]
+            }]
         });
+    });
+</script>
 
+<!-- HTML structure for full-screen map view -->
+<div style="height: 100vh; width: 100vw;">
+    <div bind:this={mapElement} style="height: 100%; width: 100%;" />
+</div>
         // Load HD image
         await loadHDImageOfAddress(defaultPlace.address);
     });
