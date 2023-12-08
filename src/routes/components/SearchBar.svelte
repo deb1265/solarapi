@@ -31,43 +31,33 @@
     await textFieldElement.updateComplete;
     const inputElement = textFieldElement.renderRoot.querySelector('input') as HTMLInputElement;
 
-    // Initialize Google Places Autocomplete
     const autocomplete = new placesLibrary.Autocomplete(inputElement, {
-      fields: ['formatted_address', 'geometry', 'name'],
+      fields: ['geometry'],
     });
 
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
-      handlePlaceChange(place);
+      if (place.geometry && place.geometry.location) {
+        updateMapAndMarker(place.geometry.location);
+        // Do not update the text field here
+      }
     });
 
-    // Initialize a draggable marker on the map
     marker = new google.maps.Marker({
       map: map,
       draggable: true
     });
 
-    // Add listener for marker drag end
     marker.addListener('dragend', () => {
       const newPosition = marker.getPosition();
       reverseGeocodeAndUpdateTextField(newPosition);
     });
 
-    // Add listener for map click
     map.addListener('click', (e) => {
       marker.setPosition(e.latLng);
       reverseGeocodeAndUpdateTextField(e.latLng);
     });
   });
-
-  function handlePlaceChange(place) {
-    if (!place.geometry || !place.geometry.location) {
-      textFieldElement.value = '';
-      return;
-    }
-    updateMapAndMarker(place.geometry.location);
-    updateTextField(place);
-  }
 
   function updateMapAndMarker(location) {
     map.setCenter(location);
@@ -75,19 +65,11 @@
     marker.setPosition(location);
   }
 
-  function updateTextField(place) {
-    textFieldElement.value = place.name || place.formatted_address || '';
-  }
-
   async function reverseGeocodeAndUpdateTextField(location) {
     try {
       const results = await geocoder.geocode({ location: location });
       if (results.results[0]) {
-        const reverseGeocodedPlace = {
-          geometry: { location: location },
-          formatted_address: results.results[0].formatted_address
-        };
-        handlePlaceChange(reverseGeocodedPlace);
+        textFieldElement.value = results.results[0].formatted_address;
       } else {
         textFieldElement.value = 'No address found';
       }
