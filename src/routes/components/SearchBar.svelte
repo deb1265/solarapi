@@ -15,7 +15,6 @@
  -->
 
 <script lang="ts">
-  /* global google */
   import { onMount } from 'svelte';
   import type { MdFilledTextField } from '@material/web/textfield/filled-text-field';
 
@@ -26,16 +25,16 @@
 
   let textFieldElement: MdFilledTextField;
   let marker;
+  let geocoder = new google.maps.Geocoder();
 
   onMount(async () => {
     await textFieldElement.updateComplete;
     const inputElement = textFieldElement.renderRoot.querySelector('input') as HTMLInputElement;
 
-    // Initialize Autocomplete
     const autocomplete = new placesLibrary.Autocomplete(inputElement, {
       fields: ['formatted_address', 'geometry', 'name'],
     });
-    
+
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
       if (!place.geometry || !place.geometry.location) {
@@ -46,20 +45,17 @@
       updateTextField(place);
     });
 
-    // Initialize Marker
     marker = new google.maps.Marker({
       map: map,
       draggable: true
     });
 
-    // Marker dragend event
     marker.addListener('dragend', () => {
       const newPosition = marker.getPosition();
       updateMapAndMarker(newPosition);
       reverseGeocodeAndUpdateTextField(newPosition);
     });
 
-    // Map click event
     map.addListener('click', (e) => {
       marker.setPosition(e.latLng);
       updateMapAndMarker(e.latLng);
@@ -79,7 +75,6 @@
 
   async function reverseGeocodeAndUpdateTextField(location) {
     try {
-      const geocoder = new google.maps.Geocoder();
       const results = await geocoder.geocode({ location: location });
       if (results.results[0]) {
         updateTextField({ name: '', formatted_address: results.results[0].formatted_address });
