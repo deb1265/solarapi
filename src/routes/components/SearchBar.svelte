@@ -19,7 +19,7 @@
 
   export let placesLibrary: google.maps.places.PlacesService;
   export let map: google.maps.Map;
-  export let initialValue = '114 Gleeland StDeer Park, NY 11729';
+  export let initialValue = '';
   export let zoom = 19;
 
   let textFieldElement: MdFilledTextField;
