@@ -37,12 +37,7 @@
 
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
-      if (!place.geometry || !place.geometry.location) {
-        textFieldElement.value = '';
-        return;
-      }
-      updateMapAndMarker(place.geometry.location);
-      updateTextField(place);
+      handlePlaceChange(place);
     });
 
     marker = new google.maps.Marker({
@@ -52,16 +47,24 @@
 
     marker.addListener('dragend', () => {
       const newPosition = marker.getPosition();
-      updateMapAndMarker(newPosition);
       reverseGeocodeAndUpdateTextField(newPosition);
     });
 
     map.addListener('click', (e) => {
       marker.setPosition(e.latLng);
-      updateMapAndMarker(e.latLng);
       reverseGeocodeAndUpdateTextField(e.latLng);
     });
   });
+
+  function handlePlaceChange(place) {
+    if (!place.geometry || !place.geometry.location) {
+      textFieldElement.value = '';
+      return;
+    }
+    updateMapAndMarker(place.geometry.location);
+    updateTextField(place);
+    // Additional logic after place change can go here
+  }
 
   function updateMapAndMarker(location) {
     map.setCenter(location);
@@ -77,7 +80,11 @@
     try {
       const results = await geocoder.geocode({ location: location });
       if (results.results[0]) {
-        updateTextField({ name: '', formatted_address: results.results[0].formatted_address });
+        const reverseGeocodedPlace = {
+          geometry: { location: location },
+          formatted_address: results.results[0].formatted_address
+        };
+        handlePlaceChange(reverseGeocodedPlace);
       } else {
         textFieldElement.value = 'No address found';
       }
@@ -86,6 +93,11 @@
     }
   }
 </script>
+
+<md-filled-text-field bind:this={textFieldElement} label="Search an address" value={initialValue}>
+  <md-icon slot="leadingicon">search</md-icon>
+</md-filled-text-field>
+
 
 <md-filled-text-field bind:this={textFieldElement} label="Search an address" value={initialValue}>
   <md-icon slot="leadingicon">search</md-icon>
