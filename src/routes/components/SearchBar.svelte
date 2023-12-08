@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  -->
-
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { MdFilledTextField } from '@material/web/textfield/filled-text-field';
@@ -24,7 +23,7 @@
   export let zoom = 25;
 
   let textFieldElement: MdFilledTextField;
-  let marker;
+  let marker: google.maps.Marker;
   let geocoder = new google.maps.Geocoder();
 
   onMount(async () => {
@@ -45,10 +44,21 @@
       updateTextField(place);
     });
 
+    // Set the initial position of the marker to the center of the map's current viewport
+    const initialPosition = map.getCenter() || new google.maps.LatLng(0, 0);
+
     marker = new google.maps.Marker({
+      position: initialPosition,
       map: map,
-      draggable: true
+      draggable: true,
+      visible: true   // Ensure the marker is visible
     });
+
+    // Center the map on the initial position
+    map.setCenter(initialPosition);
+    
+    // If you have a default zoom level for when the map is first displayed, set it here:
+    // map.setZoom(defaultZoomLevel);
 
     marker.addListener('dragend', () => {
       const newPosition = marker.getPosition();
@@ -63,17 +73,17 @@
     });
   });
 
-  function updateMapAndMarker(location) {
+  function updateMapAndMarker(location: google.maps.LatLng | google.maps.LatLngLiteral) {
     map.setCenter(location);
     map.setZoom(zoom);
     marker.setPosition(location);
   }
 
-  function updateTextField(place) {
+  function updateTextField(place: { name?: string; formatted_address?: string }) {
     textFieldElement.value = place.name || place.formatted_address || '';
   }
 
-  async function reverseGeocodeAndUpdateTextField(location) {
+  async function reverseGeocodeAndUpdateTextField(location: google.maps.LatLng | google.maps.LatLngLiteral) {
     try {
       const results = await geocoder.geocode({ location: location });
       if (results.results[0]) {
