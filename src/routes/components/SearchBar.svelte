@@ -15,52 +15,84 @@
  -->
 
 <script lang="ts">
-	/* global google */
+  /* global google */
+  import { onMount } from 'svelte';
+  import type { MdFilledTextField } from '@material/web/textfield/filled-text-field';
 
-	import { onMount } from 'svelte';
-	import type { MdFilledTextField } from '@material/web/textfield/filled-text-field';
+  export let placesLibrary: google.maps.PlacesLibrary;
+  export let map: google.maps.Map;
+  export let initialValue = '';
+  export let zoom = 19;
 
-	export let location: google.maps.LatLng | undefined;
+  let textFieldElement: MdFilledTextField;
+  let marker;
 
-	export let placesLibrary: google.maps.PlacesLibrary;
-	export let map: google.maps.Map;
-	export let initialValue = '';
-	export let zoom = 19;
+  onMount(async () => {
+    await textFieldElement.updateComplete;
+    const inputElement = textFieldElement.renderRoot.querySelector('input') as HTMLInputElement;
 
-	let textFieldElement: MdFilledTextField;
+    // Initialize Autocomplete
+    const autocomplete = new placesLibrary.Autocomplete(inputElement, {
+      fields: ['formatted_address', 'geometry', 'name'],
+    });
+    
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (!place.geometry || !place.geometry.location) {
+        textFieldElement.value = '';
+        return;
+      }
+      updateMapAndMarker(place.geometry.location);
+      updateTextField(place);
+    });
 
-	onMount(async () => {
-		// https://lit.dev/docs/components/shadow-dom/
-		await textFieldElement.updateComplete;
-		const inputElement = textFieldElement.renderRoot.querySelector('input') as HTMLInputElement;
-		const autocomplete = new placesLibrary.Autocomplete(inputElement, {
-			fields: ['formatted_address', 'geometry', 'name'],
-		});
-		autocomplete.addListener('place_changed', async () => {
-			const place = autocomplete.getPlace();
-			if (!place.geometry || !place.geometry.location) {
-				textFieldElement.value = '';
-				return;
-			}
-			if (place.geometry.viewport) {
-				// map.fitBounds(place.geometry.viewport);
-				map.setCenter(place.geometry.location);
-				map.setZoom(zoom);
-			} else {
-				map.setCenter(place.geometry.location);
-				map.setZoom(zoom);
-			}
+    // Initialize Marker
+    marker = new google.maps.Marker({
+      map: map,
+      draggable: true
+    });
 
-			location = place.geometry.location;
-			if (place.name) {
-				textFieldElement.value = place.name;
-			} else if (place.formatted_address) {
-				textFieldElement.value = place.formatted_address;
-			}
-		});
-	});
+    // Marker dragend event
+    marker.addListener('dragend', () => {
+      const newPosition = marker.getPosition();
+      updateMapAndMarker(newPosition);
+      reverseGeocodeAndUpdateTextField(newPosition);
+    });
+
+    // Map click event
+    map.addListener('click', (e) => {
+      marker.setPosition(e.latLng);
+      updateMapAndMarker(e.latLng);
+      reverseGeocodeAndUpdateTextField(e.latLng);
+    });
+  });
+
+  function updateMapAndMarker(location) {
+    map.setCenter(location);
+    map.setZoom(zoom);
+    marker.setPosition(location);
+  }
+
+  function updateTextField(place) {
+    textFieldElement.value = place.name || place.formatted_address || '';
+  }
+
+  async function reverseGeocodeAndUpdateTextField(location) {
+    try {
+      const geocoder = new google.maps.Geocoder();
+      const results = await geocoder.geocode({ location: location });
+      if (results.results[0]) {
+        updateTextField({ name: '', formatted_address: results.results[0].formatted_address });
+      } else {
+        textFieldElement.value = 'No address found';
+      }
+    } catch (e) {
+      textFieldElement.value = 'Geocoding failed';
+    }
+  }
 </script>
 
 <md-filled-text-field bind:this={textFieldElement} label="Search an address" value={initialValue}>
-	<md-icon slot="leadingicon">search</md-icon>
+  <md-icon slot="leadingicon">search</md-icon>
 </md-filled-text-field>
+
