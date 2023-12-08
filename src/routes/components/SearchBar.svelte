@@ -14,94 +14,52 @@
  limitations under the License.
  -->
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import type { MdFilledTextField } from '@material/web/textfield/filled-text-field';
+	/* global google */
 
-  export let placesLibrary: google.maps.places.PlacesService;
-  export let map: google.maps.Map;
-  export let initialValue = '';
-  export let zoom = 19;
+	import { onMount } from 'svelte';
+	import type { MdFilledTextField } from '@material/web/textfield/filled-text-field';
 
-  let textFieldElement: MdFilledTextField;
-  let marker: google.maps.Marker;
-  let geocoder = new google.maps.Geocoder();
-  
-  const defaultLocation = {lat: -34.397, lng: 150.644}; // Default fallback location coordinates
+	export let location: google.maps.LatLng | undefined;
 
-  onMount(async () => {
-    await textFieldElement.updateComplete;
-    const inputElement = textFieldElement.renderRoot.querySelector('input') as HTMLInputElement;
+	export let placesLibrary: google.maps.PlacesLibrary;
+	export let map: google.maps.Map;
+	export let initialValue = '';
+	export let zoom = 19;
 
-    const autocomplete = new google.maps.places.Autocomplete(inputElement, {
-      fields: ['formatted_address', 'geometry', 'name'],
-    });
+	let textFieldElement: MdFilledTextField;
 
-    autocomplete.addListener('place_changed', () => {
-      const place = autocomplete.getPlace();
-      if (!place.geometry || !place.geometry.location) {
-        console.error('No geometry found for this place.');
-        textFieldElement.value = '';
-        return;
-      }
-      updateMapAndMarker(place.geometry.location);
-      updateTextField(place);
-    });
+	onMount(async () => {
+		// https://lit.dev/docs/components/shadow-dom/
+		await textFieldElement.updateComplete;
+		const inputElement = textFieldElement.renderRoot.querySelector('input') as HTMLInputElement;
+		const autocomplete = new placesLibrary.Autocomplete(inputElement, {
+			fields: ['formatted_address', 'geometry', 'name'],
+		});
+		autocomplete.addListener('place_changed', async () => {
+			const place = autocomplete.getPlace();
+			if (!place.geometry || !place.geometry.location) {
+				textFieldElement.value = '';
+				return;
+			}
+			if (place.geometry.viewport) {
+				// map.fitBounds(place.geometry.viewport);
+				map.setCenter(place.geometry.location);
+				map.setZoom(zoom);
+			} else {
+				map.setCenter(place.geometry.location);
+				map.setZoom(zoom);
+			}
 
-    // Set the initial position for the marker
-    const initialPosition = defaultLocation;
-
-    marker = new google.maps.Marker({
-      position: initialPosition,
-      map: map,
-      draggable: true,
-      visible: true  // Make sure the marker is visible
-    });
-
-    // Initiate the map and marker to the initial position
-    updateMapAndMarker(initialPosition);
-
-    marker.addListener('dragend', () => {
-      const newPosition = marker.getPosition();
-      updateMapAndMarker(newPosition);
-      reverseGeocodeAndUpdateTextField(newPosition);
-    });
-
-    map.addListener('click', (e) => {
-      const clickPosition = e.latLng;
-      marker.setPosition(clickPosition);
-      updateMapAndMarker(clickPosition);
-      reverseGeocodeAndUpdateTextField(clickPosition);
-    });
-
-    // Log marker and map status for debugging
-    console.log('Marker initialized at:', initialPosition);
-    console.log('Map center set to:', initialPosition);
-  });
-
-  function updateMapAndMarker(location) {
-    map.setCenter(location);
-    map.setZoom(zoom);
-    marker.setPosition(location);
-    console.log('Map and marker updated to:', location);  // Log for debugging
-  }
-
-  function updateTextField(place) {
-    textFieldElement.value = place.name || place.formatted_address || '';
-  }
-
-  async function reverseGeocodeAndUpdateTextField(location) {
-    try {
-      const results = await geocoder.geocode({ location: location });
-      if (results.results[0]) {
-        updateTextField({ name: '', formatted_address: results.results[0].formatted_address });
-      } else {
-        textFieldElement.value = 'No address found';
-      }
-    } catch (e) {
-      textFieldElement.value = 'Geocoding failed';
-      console.error('Geocoding failed:', e);  // Log for debugging
-    }
-  }
+			location = place.geometry.location;
+			if (place.name) {
+				textFieldElement.value = place.name;
+			} else if (place.formatted_address) {
+				textFieldElement.value = place.formatted_address;
+			}
+		});
+	});
 </script>
 
-<md-filled-text-field bind:this={textFieldElement} label="Search an address" />
+<md-filled-text-field bind:this={textFieldElement} label="Search an address" value={initialValue}>
+	<md-icon slot="leadingicon">search</md-icon>
+</md-filled-text-field>
