@@ -17,7 +17,7 @@
   import { onMount } from 'svelte';
   import type { MdFilledTextField } from '@material/web/textfield/filled-text-field';
 
-  export let placesLibrary: google.maps.PlacesLibrary;
+  export let placesLibrary: google.maps.places.PlacesService;
   export let map: google.maps.Map;
   export let initialValue = '';
   export let zoom = 25;
@@ -25,18 +25,21 @@
   let textFieldElement: MdFilledTextField;
   let marker: google.maps.Marker;
   let geocoder = new google.maps.Geocoder();
+  
+  const defaultLocation = {lat: -34.397, lng: 150.644}; // Default fallback location coordinates
 
   onMount(async () => {
     await textFieldElement.updateComplete;
     const inputElement = textFieldElement.renderRoot.querySelector('input') as HTMLInputElement;
 
-    const autocomplete = new placesLibrary.Autocomplete(inputElement, {
+    const autocomplete = new google.maps.places.Autocomplete(inputElement, {
       fields: ['formatted_address', 'geometry', 'name'],
     });
 
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
       if (!place.geometry || !place.geometry.location) {
+        console.error('No geometry found for this place.');
         textFieldElement.value = '';
         return;
       }
@@ -44,21 +47,18 @@
       updateTextField(place);
     });
 
-    // Set the initial position of the marker to the center of the map's current viewport
-    const initialPosition = map.getCenter() || new google.maps.LatLng(0, 0);
+    // Set the initial position for the marker
+    const initialPosition = defaultLocation;
 
     marker = new google.maps.Marker({
       position: initialPosition,
       map: map,
       draggable: true,
-      visible: true   // Ensure the marker is visible
+      visible: true  // Make sure the marker is visible
     });
 
-    // Center the map on the initial position
-    map.setCenter(initialPosition);
-    
-    // If you have a default zoom level for when the map is first displayed, set it here:
-    // map.setZoom(defaultZoomLevel);
+    // Initiate the map and marker to the initial position
+    updateMapAndMarker(initialPosition);
 
     marker.addListener('dragend', () => {
       const newPosition = marker.getPosition();
@@ -67,23 +67,29 @@
     });
 
     map.addListener('click', (e) => {
-      marker.setPosition(e.latLng);
-      updateMapAndMarker(e.latLng);
-      reverseGeocodeAndUpdateTextField(e.latLng);
+      const clickPosition = e.latLng;
+      marker.setPosition(clickPosition);
+      updateMapAndMarker(clickPosition);
+      reverseGeocodeAndUpdateTextField(clickPosition);
     });
+
+    // Log marker and map status for debugging
+    console.log('Marker initialized at:', initialPosition);
+    console.log('Map center set to:', initialPosition);
   });
 
-  function updateMapAndMarker(location: google.maps.LatLng | google.maps.LatLngLiteral) {
+  function updateMapAndMarker(location) {
     map.setCenter(location);
     map.setZoom(zoom);
     marker.setPosition(location);
+    console.log('Map and marker updated to:', location);  // Log for debugging
   }
 
-  function updateTextField(place: { name?: string; formatted_address?: string }) {
+  function updateTextField(place) {
     textFieldElement.value = place.name || place.formatted_address || '';
   }
 
-  async function reverseGeocodeAndUpdateTextField(location: google.maps.LatLng | google.maps.LatLngLiteral) {
+  async function reverseGeocodeAndUpdateTextField(location) {
     try {
       const results = await geocoder.geocode({ location: location });
       if (results.results[0]) {
@@ -93,11 +99,9 @@
       }
     } catch (e) {
       textFieldElement.value = 'Geocoding failed';
+      console.error('Geocoding failed:', e);  // Log for debugging
     }
   }
 </script>
 
-<md-filled-text-field bind:this={textFieldElement} label="Search an address" value={initialValue}>
-  <md-icon slot="leadingicon">search</md-icon>
-</md-filled-text-field>
-
+<md-filled-text-field bind:this={textFieldElement} label="Search an address" />
