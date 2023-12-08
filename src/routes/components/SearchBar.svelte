@@ -31,6 +31,7 @@
     await textFieldElement.updateComplete;
     const inputElement = textFieldElement.renderRoot.querySelector('input') as HTMLInputElement;
 
+    // Initialize Google Places Autocomplete
     const autocomplete = new placesLibrary.Autocomplete(inputElement, {
       fields: ['formatted_address', 'geometry', 'name'],
     });
@@ -40,16 +41,19 @@
       handlePlaceChange(place);
     });
 
+    // Initialize a draggable marker on the map
     marker = new google.maps.Marker({
       map: map,
       draggable: true
     });
 
+    // Add listener for marker drag end
     marker.addListener('dragend', () => {
       const newPosition = marker.getPosition();
       reverseGeocodeAndUpdateTextField(newPosition);
     });
 
+    // Add listener for map click
     map.addListener('click', (e) => {
       marker.setPosition(e.latLng);
       reverseGeocodeAndUpdateTextField(e.latLng);
@@ -63,7 +67,6 @@
     }
     updateMapAndMarker(place.geometry.location);
     updateTextField(place);
-    // Additional logic after place change can go here
   }
 
   function updateMapAndMarker(location) {
@@ -98,7 +101,3 @@
   <md-icon slot="leadingicon">search</md-icon>
 </md-filled-text-field>
 
-
-<md-filled-text-field bind:this={textFieldElement} label="Search an address" value={initialValue}>
-  <md-icon slot="leadingicon">search</md-icon>
-</md-filled-text-field>
