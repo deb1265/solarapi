@@ -19,50 +19,76 @@
   import { onMount } from 'svelte';
   import type { MdFilledTextField } from '@material/web/textfield/filled-text-field';
 
-  export let location: google.maps.LatLng | undefined;
   export let placesLibrary: google.maps.PlacesLibrary;
   export let map: google.maps.Map;
   export let initialValue = '';
   export let zoom = 19;
 
   let textFieldElement: MdFilledTextField;
+  let marker;
 
   onMount(async () => {
     await textFieldElement.updateComplete;
     const inputElement = textFieldElement.renderRoot.querySelector('input') as HTMLInputElement;
+
+    // Initialize Autocomplete
     const autocomplete = new placesLibrary.Autocomplete(inputElement, {
       fields: ['formatted_address', 'geometry', 'name'],
     });
     
-    autocomplete.addListener('place_changed', async () => {
+    autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
       if (!place.geometry || !place.geometry.location) {
         textFieldElement.value = '';
         return;
       }
+      updateMapAndMarker(place.geometry.location);
+      updateTextField(place);
+    });
 
-      // Update the map pointer before the place_changed logic is finalized
-      updateMapPointer(place.geometry.location);
+    // Initialize Marker
+    marker = new google.maps.Marker({
+      map: map,
+      draggable: true
+    });
 
-      // Now handle the place_changed event
-      handlePlaceChanged(place);
+    // Marker dragend event
+    marker.addListener('dragend', () => {
+      const newPosition = marker.getPosition();
+      updateMapAndMarker(newPosition);
+      reverseGeocodeAndUpdateTextField(newPosition);
+    });
+
+    // Map click event
+    map.addListener('click', (e) => {
+      marker.setPosition(e.latLng);
+      updateMapAndMarker(e.latLng);
+      reverseGeocodeAndUpdateTextField(e.latLng);
     });
   });
 
-  function updateMapPointer(location) {
+  function updateMapAndMarker(location) {
     map.setCenter(location);
     map.setZoom(zoom);
-    // Update the pointer/marker here if necessary
+    marker.setPosition(location);
   }
 
-  function handlePlaceChanged(place) {
-    location = place.geometry.location;
-    if (place.name) {
-      textFieldElement.value = place.name;
-    } else if (place.formatted_address) {
-      textFieldElement.value = place.formatted_address;
+  function updateTextField(place) {
+    textFieldElement.value = place.name || place.formatted_address || '';
+  }
+
+  async function reverseGeocodeAndUpdateTextField(location) {
+    try {
+      const geocoder = new google.maps.Geocoder();
+      const results = await geocoder.geocode({ location: location });
+      if (results.results[0]) {
+        updateTextField({ name: '', formatted_address: results.results[0].formatted_address });
+      } else {
+        textFieldElement.value = 'No address found';
+      }
+    } catch (e) {
+      textFieldElement.value = 'Geocoding failed';
     }
-    // Any additional logic to handle after the place has changed
   }
 </script>
 
