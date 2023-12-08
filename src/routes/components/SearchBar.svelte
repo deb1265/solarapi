@@ -17,83 +17,91 @@
   import { onMount } from 'svelte';
   import type { MdFilledTextField } from '@material/web/textfield/filled-text-field';
 
-  export let placesLibrary: google.maps.PlacesLibrary;
+  export let placesLibrary: google.maps.places.PlacesService;
   export let map: google.maps.Map;
   export let initialValue = '';
-  export let zoom = 19;
+  export let zoom = 25;
 
   let textFieldElement: MdFilledTextField;
-  let marker;
+  let marker: google.maps.Marker;
   let geocoder = new google.maps.Geocoder();
-  let inputElement;
+  
+  const defaultLocation = {lat: -34.397, lng: 150.644}; // Default fallback location coordinates
 
   onMount(async () => {
     await textFieldElement.updateComplete;
-    inputElement = textFieldElement.renderRoot.querySelector('input') as HTMLInputElement;
-    inputElement.addEventListener('keydown', handleEnterPress);
+    const inputElement = textFieldElement.renderRoot.querySelector('input') as HTMLInputElement;
 
-    const autocomplete = new placesLibrary.Autocomplete(inputElement, {
-      fields: ['geometry'],
+    const autocomplete = new google.maps.places.Autocomplete(inputElement, {
+      fields: ['formatted_address', 'geometry', 'name'],
     });
 
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
-      if (place.geometry && place.geometry.location) {
-        updateMapAndMarker(place.geometry.location);
+      if (!place.geometry || !place.geometry.location) {
+        console.error('No geometry found for this place.');
+        textFieldElement.value = '';
+        return;
       }
+      updateMapAndMarker(place.geometry.location);
+      updateTextField(place);
     });
 
+    // Set the initial position for the marker
+    const initialPosition = defaultLocation;
+
     marker = new google.maps.Marker({
+      position: initialPosition,
       map: map,
-      draggable: true
+      draggable: true,
+      visible: true  // Make sure the marker is visible
     });
+
+    // Initiate the map and marker to the initial position
+    updateMapAndMarker(initialPosition);
 
     marker.addListener('dragend', () => {
       const newPosition = marker.getPosition();
+      updateMapAndMarker(newPosition);
       reverseGeocodeAndUpdateTextField(newPosition);
     });
 
     map.addListener('click', (e) => {
-      marker.setPosition(e.latLng);
-      reverseGeocodeAndUpdateTextField(e.latLng);
+      const clickPosition = e.latLng;
+      marker.setPosition(clickPosition);
+      updateMapAndMarker(clickPosition);
+      reverseGeocodeAndUpdateTextField(clickPosition);
     });
-  });
 
-  function handleEnterPress(event) {
-    if (event.key === 'Enter') {
-      // Logic to handle the address input when 'Enter' is pressed
-      console.log('Address entered:', textFieldElement.value);
-      // Add your logic here
-    }
-  }
+    // Log marker and map status for debugging
+    console.log('Marker initialized at:', initialPosition);
+    console.log('Map center set to:', initialPosition);
+  });
 
   function updateMapAndMarker(location) {
     map.setCenter(location);
     map.setZoom(zoom);
     marker.setPosition(location);
+    console.log('Map and marker updated to:', location);  // Log for debugging
+  }
+
+  function updateTextField(place) {
+    textFieldElement.value = place.name || place.formatted_address || '';
   }
 
   async function reverseGeocodeAndUpdateTextField(location) {
     try {
       const results = await geocoder.geocode({ location: location });
       if (results.results[0]) {
-        textFieldElement.value = results.results[0].formatted_address;
+        updateTextField({ name: '', formatted_address: results.results[0].formatted_address });
       } else {
         textFieldElement.value = 'No address found';
       }
     } catch (e) {
       textFieldElement.value = 'Geocoding failed';
+      console.error('Geocoding failed:', e);  // Log for debugging
     }
   }
-
-  // Cleanup: Remove event listener
-  onDestroy(() => {
-    if (inputElement) {
-      inputElement.removeEventListener('keydown', handleEnterPress);
-    }
-  });
 </script>
 
-<md-filled-text-field bind:this={textFieldElement} label="Search an address" value={initialValue}>
-  <md-icon slot="leadingicon">search</md-icon>
-</md-filled-text-field>
+<md-filled-text-field bind:this={textFieldElement} label="Search an address" />
